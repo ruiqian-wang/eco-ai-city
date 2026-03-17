@@ -1,228 +1,234 @@
 import { Scenario } from './types';
 
-export const SCENARIOS: Scenario[] = [
-    {
-      "id": 1,
-      "name": "AI Tutor",
-      "category": "Green-in",
-      "visual_theme": "energy_warning",
-      "red_ai_status": {
-        "problem": "Heavy Cloud Dependency",
-        "description": "Red AI: Connects to a massive cloud server for every single question, wasting enough electricity to power 100 laptops[cite: 3014, 3018].",
-        "eco_impact_fact": "Carbon footprint is like charging your phone 500 times per session."
-      },
-      "game_stats": {
-        "startup_cost": 7,
-        "maintenance_fee": 4,
-        "upgrade_cost": 2
-      },
-      "green_transformation": {
-        "title": "Model Distillation",
-        "effect_desc": "Green AI: Compresses the AI to run locally on your device[cite: 2905, 3010]. Zero cloud energy used.",
-        "green_benefit": 0,
-        "strategy_tip": "Low upgrade cost! Great for early-game energy saving."
-      }
+export const BUILDING_COST_CONFIG = {
+  general_building_deployment_costs: [
+    { building: 'Library', battery: 5, water: 3, rare_materials: 1 },
+    { building: 'Classroom', battery: 6, water: 3, rare_materials: 1 },
+    { building: 'Canteen', battery: 4, water: 4, rare_materials: 1 },
+    { building: 'Garden', battery: 4, water: 3, rare_materials: 1 },
+    { building: 'Security', battery: 5, water: 3, rare_materials: 1 },
+  ],
+  green_ai_upgrade_costs: [
+    { building: 'Library', battery: 2, water: 1 },
+    { building: 'Classroom', battery: 2, water: 1 },
+    { building: 'Teacher', battery: 2, water: 2 },
+    { building: 'Canteen', battery: 2, water: 2 },
+    { building: 'Garden', battery: 1, water: 1 },
+    { building: 'Studio', battery: 2, water: 2 },
+    { building: 'Health', battery: 2, water: 2 },
+    { building: 'Security', battery: 2, water: 1 },
+  ],
+  ai_operating_consumption_per_round: [
+    { building: 'Library', standard_ai: { battery: 2, water: 1 }, green_ai: { battery: 1, water: 0 } },
+    { building: 'Classroom', standard_ai: { battery: 2, water: 1 }, green_ai: { battery: 1, water: 0 } },
+    { building: 'Teacher', standard_ai: { battery: 3, water: 2 }, green_ai: { battery: 1, water: 1 } },
+    { building: 'Canteen', standard_ai: { battery: 2, water: 2 }, green_ai: { battery: 1, water: 1 } },
+    { building: 'Garden', standard_ai: { battery: 1, water: 1 }, green_ai: { battery: 0, water: 0 } },
+    { building: 'Studio', standard_ai: { battery: 3, water: 2 }, green_ai: { battery: 1, water: 1 } },
+    { building: 'Health', standard_ai: { battery: 3, water: 2 }, green_ai: { battery: 1, water: 1 } },
+    { building: 'Security', standard_ai: { battery: 2, water: 1 }, green_ai: { battery: 1, water: 0 } },
+  ],
+  special_building_options: {
+    option_a: {
+      name: 'Full AI Deployment',
+      pros: 'Rapid deployment, lower initial cost',
+      cons: 'Ethical risks, potential for events triggered every round',
+      costs: [
+        { building: 'Counseling Center', battery: 5, water: 4, rare_materials: 1 },
+        { building: 'Creative Arts Studio', battery: 6, water: 4, rare_materials: 1 },
+        { building: 'Teachers Office', battery: 5, water: 4, rare_materials: 1 },
+      ],
     },
-    {
-      "id": 2,
-      "name": "AI Art Club",
-      "category": "Green-in",
-      "visual_theme": "energy_warning",
-      "red_ai_status": {
-        "problem": "Massive Parameter Training",
-        "description": "Red AI: Generating one high-res poster requires thousands of chips running simultaneously[cite: 2672, 3312].",
-        "eco_impact_fact": "Training this model emits as much CO2 as flying across the ocean 33 times[cite: 2673, 3700]!"
-      },
-      "game_stats": {
-        "startup_cost": 7,
-        "maintenance_fee": 5,
-        "upgrade_cost": 3
-      },
-      "green_transformation": {
-        "title": "Green-in: Algorithm Optimization",
-        "effect_desc": "Green AI: Uses 'Sparse Training' to cut unnecessary calculations[cite: 2914, 3010]. Maintenance fee becomes 0.",
-        "green_benefit": 0,
-        "strategy_tip": "Stop the 'Red AI' energy drain early to keep your team's budget safe."
-      }
+    option_b: {
+      name: 'Human-AI Collaboration',
+      pros: 'Reduced ethical risks, higher long-term security',
+      cons: 'Slightly higher initial cost',
+      costs: [
+        { building: 'Counseling Center', battery: 6, water: 4, rare_materials: 1 },
+        { building: 'Creative Arts Studio', battery: 7, water: 4, rare_materials: 1 },
+        { building: 'Teachers Office', battery: 6, water: 4, rare_materials: 1 },
+      ],
     },
-    {
-      "id": 3,
-      "name": "Med-Bot",
-      "category": "Green-in",
-      "visual_theme": "energy_warning",
-      "red_ai_status": {
-        "problem": "Bloated Architecture",
-        "description": "Red AI: To get 99% accuracy, the model became too 'heavy' and power-hungry[cite: 2663, 2729].",
-        "eco_impact_fact": "Processing one scan uses the same energy as a 5W LED bulb running for 80 minutes[cite: 2677]."
-      },
-      "game_stats": {
-        "startup_cost": 9,
-        "maintenance_fee": 5,
-        "upgrade_cost": 4
-      },
-      "green_transformation": {
-        "title": "Green-in: Specialized Hardware",
-        "effect_desc": "Green AI: Switches from general GPUs to efficient AI chips (TPUs)[cite: 2920, 3011].",
-        "green_benefit": -1,
-        "strategy_tip": "Upgrading hardware saves 50% energy per turn. A wise long-term investment!"
-      }
-    },
-    {
-      "id": 4,
-      "name": "Smart Toaster",
-      "category": "Green-in",
-      "visual_theme": "energy_warning",
-      "red_ai_status": {
-        "problem": "Inefficient Data Use",
-        "description": "Red AI: Uses massive, unfiltered datasets to recognize toast, wasting 80% of its energy[cite: 3466].",
-        "eco_impact_fact": "More data doesn't always mean better results—it just means more heat[cite: 2666, 3341]!"
-      },
-      "game_stats": {
-        "startup_cost": 6,
-        "maintenance_fee": 4,
-        "upgrade_cost": 2
-      },
-      "green_transformation": {
-        "title": "Frugal AI Design",
-        "effect_desc": "Green AI: Learns more from less data (Data Efficiency)[cite: 2725, 3723]. Maintenance fee becomes 0.",
-        "green_benefit": 0,
-        "strategy_tip": "Cheap to start and cheap to upgrade. Good for maintaining team balance."
-      }
-    },
-    {
-      "id": 5,
-      "name": "Secret Treehole",
-      "category": "Green-in",
-      "visual_theme": "energy_warning",
-      "red_ai_status": {
-        "problem": "Computation-Heavy Privacy",
-        "description": "Red AI: Complex encryption for your secrets causes the processor to overheat constantly[cite: 3500].",
-        "eco_impact_fact": "Privacy is vital, but inefficient code makes it cost an 'arm and a leg' in energy[cite: 3313]."
-      },
-      "game_stats": {
-        "startup_cost": 11,
-        "maintenance_fee": 6,
-        "upgrade_cost": 5
-      },
-      "green_transformation": {
-        "title": "Privacy-Preserving Efficiency",
-        "effect_desc": "Green AI: Uses 'Federated Learning' to protect data with much lower compute power[cite: 2924, 3221].",
-        "green_benefit": -1,
-        "strategy_tip": "This AI is social but expensive. Make sure your team has a 'Power Buffer' before starting."
-      }
-    },
-    {
-      "id": 6,
-      "name": "Waste Sorter",
-      "category": "Green-by",
-      "visual_theme": "eco_growth",
-      "red_ai_status": {
-        "problem": "Bias & Error Energy",
-        "description": "Red AI: Often confuses plastic with paper, forcing the machine to restart and waste power.",
-        "eco_impact_fact": "A biased AI is like a broken robot—it consumes energy but creates more work[cite: 2658]."
-      },
-      "game_stats": {
-        "startup_cost": 9,
-        "maintenance_fee": 5,
-        "upgrade_cost": 4
-      },
-      "green_transformation": {
-        "title": "Green-by AI: Eco-Action",
-        "effect_desc": "AI now helps the planet! Boosts campus recycling rates and saves real-world resources[cite: 2731, 3032].",
-        "green_benefit": 2,
-        "strategy_tip": "TRANSFORM ASAP! This AI returns 2 batteries to the grid every turn."
-      }
-    },
-    {
-      "id": 7,
-      "name": "Smart Campus Bus",
-      "category": "Green-by",
-      "visual_theme": "eco_growth",
-      "red_ai_status": {
-        "problem": "Constant Scanning Drain",
-        "description": "Red AI: Scans the entire campus 24/7. It's an 'Energy Vampire' that never sleeps[cite: 2669].",
-        "eco_impact_fact": "Training this bus model used energy equivalent to 121 homes for a year[cite: 2672]!"
-      },
-      "game_stats": {
-        "startup_cost": 13,
-        "maintenance_fee": 7,
-        "upgrade_cost": 6
-      },
-      "green_transformation": {
-        "title": "Green-by AI: Smart Mobility",
-        "effect_desc": "AI optimizes routes and reduces campus-wide traffic emissions[cite: 2851, 2854].",
-        "green_benefit": 3,
-        "strategy_tip": "High initial cost, but the回馈 (3 batteries/turn) is essential for survival."
-      }
-    },
-    {
-      "id": 8,
-      "name": "Rooftop Farm AI",
-      "category": "Green-by",
-      "visual_theme": "eco_growth",
-      "red_ai_status": {
-        "problem": "Redundant Monitoring",
-        "description": "Red AI: Monitors every single drop of water with zero regard for energy cost[cite: 3511].",
-        "eco_impact_fact": "Red AI buys accuracy by 'spending' massive amounts of your limited batteries[cite: 2901, 3392]."
-      },
-      "game_stats": {
-        "startup_cost": 11,
-        "maintenance_fee": 6,
-        "upgrade_cost": 5
-      },
-      "green_transformation": {
-        "title": "Green-by AI: Sustainable Agriculture",
-        "effect_desc": "AI precisely manages water and fertilizers, saving more energy than it uses[cite: 2863, 2865].",
-        "green_benefit": 3,
-        "strategy_tip": "A true team player. Use shared funds to upgrade this for a stable grid."
-      }
-    },
-    {
-      "id": 9,
-      "name": "Gym Weather Station",
-      "category": "Green-by",
-      "visual_theme": "eco_growth",
-      "red_ai_status": {
-        "problem": "Supercomputer Overload",
-        "description": "Red AI: Predicting rain requires massive data centers that heat up the planet[cite: 2665, 2927].",
-        "eco_impact_fact": "Computers used for this are projected to reach 30% of global energy use by 2030[cite: 2669]!"
-      },
-      "game_stats": {
-        "startup_cost": 15,
-        "maintenance_fee": 8,
-        "upgrade_cost": 8
-      },
-      "green_transformation": {
-        "title": "Green-by AI: Climate Adaptation",
-        "effect_desc": "Early warnings prevent disaster damage, saving huge amounts of campus resources[cite: 2878, 3032].",
-        "green_benefit": 5,
-        "strategy_tip": "The ultimate Eco-Hero. It gives back 5 batteries every single turn!"
-      }
-    },
-    {
-      "id": 10,
-      "name": "Campus AI Hub",
-      "category": "Shared",
-      "visual_theme": "system_core",
-      "red_ai_status": {
-        "problem": "Systemic Inefficiency",
-        "description": "Red AI: Connects all devices but has NO energy management. It's a ticking time bomb[cite: 2938].",
-        "eco_impact_fact": "If this hub crashes, the whole 'Digital School' goes dark[cite: 3021, 3054]."
-      },
-      "game_stats": {
-        "startup_cost": 18,
-        "maintenance_fee": 9,
-        "upgrade_cost": 10
-      },
-      "green_transformation": {
-        "title": "Sustainable Tech Governance",
-        "effect_desc": "Allows any researcher with a laptop to participate, not just the 'Rich Kids'[cite: 2658, 3321].",
-        "green_benefit": 8,
-        "strategy_tip": "The Final Boss. Everyone MUST contribute batteries to upgrade this together!"
-      }
-    }
-  ]
+  },
+};
 
-export const INITIAL_ENERGY = 60;
-export const INITIAL_BATTERIES = 10;
+const SPECIAL_OPTION_IN_USE: 'option_a' | 'option_b' = 'option_b';
+
+const deploymentByBuilding = new Map(
+  BUILDING_COST_CONFIG.general_building_deployment_costs.map(item => [item.building, item] as const)
+);
+for (const item of BUILDING_COST_CONFIG.special_building_options[SPECIAL_OPTION_IN_USE].costs) {
+  const mappedName =
+    item.building === 'Counseling Center'
+      ? 'Health'
+      : item.building === 'Creative Arts Studio'
+        ? 'Studio'
+        : item.building === 'Teachers Office'
+          ? 'Teacher'
+          : item.building;
+  deploymentByBuilding.set(mappedName, item);
+}
+const upgradeByBuilding = new Map(
+  BUILDING_COST_CONFIG.green_ai_upgrade_costs.map(item => [item.building, item] as const)
+);
+const operatingByBuilding = new Map(
+  BUILDING_COST_CONFIG.ai_operating_consumption_per_round.map(item => [item.building, item] as const)
+);
+
+const makeStats = (building: string) => ({
+  deployment_cost: deploymentByBuilding.get(building)!,
+  green_upgrade_cost: upgradeByBuilding.get(building)!,
+  ai_operating_consumption_per_round: operatingByBuilding.get(building)!,
+});
+
+export const SCENARIOS: Scenario[] = [
+  {
+    id: 1,
+    name: 'Canteen',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Inefficient kitchen scheduling',
+      description: 'Standard AI over-orders prep cycles and wastes kitchen resources.',
+      eco_impact_fact: 'Peak-hour spikes cause avoidable battery and water use.',
+    },
+    game_stats: makeStats('Canteen'),
+    green_transformation: {
+      title: 'Smart meal optimization',
+      effect_desc: 'Green AI predicts demand better and reduces redundant operations.',
+      green_benefit: 0,
+      strategy_tip: 'Good early conversion to stabilize shared resources.',
+    },
+  },
+  {
+    id: 2,
+    name: 'Studio',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Render-heavy generation loops',
+      description: 'Standard AI repeatedly reruns creative jobs with high compute load.',
+      eco_impact_fact: 'Rendering retries consume both battery and water cooling budget.',
+    },
+    game_stats: makeStats('Studio'),
+    green_transformation: {
+      title: 'Efficient generation pipeline',
+      effect_desc: 'Green AI avoids redundant passes and uses lightweight inference.',
+      green_benefit: 0,
+      strategy_tip: 'Upgrade after basic buildings to prevent mid-game drain.',
+    },
+  },
+  {
+    id: 3,
+    name: 'Health',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Always-on triage model',
+      description: 'Standard AI processes too many non-critical checks continuously.',
+      eco_impact_fact: 'Continuous monitoring creates unnecessary operating overhead.',
+    },
+    game_stats: makeStats('Health'),
+    green_transformation: {
+      title: 'Priority-aware triage',
+      effect_desc: 'Green AI schedules diagnostics only when confidence is low.',
+      green_benefit: 0,
+      strategy_tip: 'Keeps resource pressure manageable in later rounds.',
+    },
+  },
+  {
+    id: 4,
+    name: 'Classroom',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Over-provisioned tutoring sessions',
+      description: 'Standard AI spins up full models for simple classroom tasks.',
+      eco_impact_fact: 'Teaching workloads can be served with much smaller models.',
+    },
+    game_stats: makeStats('Classroom'),
+    green_transformation: {
+      title: 'Adaptive lightweight tutor',
+      effect_desc: 'Green AI scales model size based on lesson complexity.',
+      green_benefit: 0,
+      strategy_tip: 'Low-risk upgrade with immediate operating savings.',
+    },
+  },
+  {
+    id: 5,
+    name: 'Garden',
+    category: 'Green-by',
+    visual_theme: 'eco_growth',
+    red_ai_status: {
+      problem: 'Inefficient irrigation feedback',
+      description: 'Standard AI polls sensors too often and over-corrects watering.',
+      eco_impact_fact: 'Smart schedules can nearly eliminate idle consumption.',
+    },
+    game_stats: makeStats('Garden'),
+    green_transformation: {
+      title: 'Precision micro-irrigation',
+      effect_desc: 'Green AI only reacts to real changes in soil and weather signals.',
+      green_benefit: 0,
+      strategy_tip: 'Cheapest path toward a zero-consumption operating site.',
+    },
+  },
+  {
+    id: 6,
+    name: 'Security',
+    category: 'Green-by',
+    visual_theme: 'eco_growth',
+    red_ai_status: {
+      problem: 'Always-max surveillance mode',
+      description: 'Standard AI runs high-power analytics at all times.',
+      eco_impact_fact: 'Context-aware monitoring cuts baseline load significantly.',
+    },
+    game_stats: makeStats('Security'),
+    green_transformation: {
+      title: 'Context-triggered monitoring',
+      effect_desc: 'Green AI scales down during low-risk periods.',
+      green_benefit: 0,
+      strategy_tip: 'Strong pick when water is becoming scarce.',
+    },
+  },
+  {
+    id: 7,
+    name: 'Library',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Wasteful indexing and retrieval',
+      description: 'Standard AI continuously rebuilds indexes with excessive compute.',
+      eco_impact_fact: 'Batching and caching can halve runtime usage.',
+    },
+    game_stats: makeStats('Library'),
+    green_transformation: {
+      title: 'Incremental indexing',
+      effect_desc: 'Green AI updates only changed content and caches query results.',
+      green_benefit: 0,
+      strategy_tip: 'Reliable early target with balanced cost profile.',
+    },
+  },
+  {
+    id: 8,
+    name: 'Teacher',
+    category: 'Green-in',
+    visual_theme: 'energy_warning',
+    red_ai_status: {
+      problem: 'Heavy administrative automation',
+      description: 'Standard AI performs full-document processing for small updates.',
+      eco_impact_fact: 'Most office tasks can be handled with incremental workflows.',
+    },
+    game_stats: makeStats('Teacher'),
+    green_transformation: {
+      title: 'Incremental office assistant',
+      effect_desc: 'Green AI applies focused updates and low-power summarization.',
+      green_benefit: 0,
+      strategy_tip: 'Higher baseline drain but excellent payoff after upgrade.',
+    },
+  },
+];
+
+export const INITIAL_POWER = 60;
+export const INITIAL_WATER = 60;
+export const INITIAL_MATERIALS = 30;
 export const WIN_UPGRADE_COUNT = 8;

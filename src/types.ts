@@ -5,9 +5,25 @@ export interface RedAIStatus {
 }
 
 export interface GameStats {
-  startup_cost: number;
-  maintenance_fee: number;
-  upgrade_cost: number;
+  deployment_cost: {
+    battery: number;
+    water: number;
+    rare_materials: number;
+  };
+  green_upgrade_cost: {
+    battery: number;
+    water: number;
+  };
+  ai_operating_consumption_per_round: {
+    standard_ai: {
+      battery: number;
+      water: number;
+    };
+    green_ai: {
+      battery: number;
+      water: number;
+    };
+  };
 }
 
 export interface GreenTransformation {
@@ -27,25 +43,29 @@ export interface Scenario {
   green_transformation: GreenTransformation;
 }
 
-export type TileStatus = 'locked' | 'red' | 'green' | 'closed';
+export type TileStatus = 'locked' | 'red' | 'green';
 
 export interface TileState {
   id: number;
   status: TileStatus;
-  contributions: Record<string, number>; // playerId -> amount
+  contributions: Record<string, { battery: number; water: number }>; // playerId -> contribution
 }
 
 export interface Player {
   id: string;
   name: string;
-  batteries: number;
+  battery: number;
+  water: number;
+  materials: number;
   color: string;
   isReady: boolean;
   socketId: string;
 }
 
 export interface GameState {
-  publicEnergy: number;
+  publicPower: number;
+  publicWater: number;
+  publicMaterials: number;
   players: Record<string, Player>;
   playerOrder: string[];
   currentPlayerIndex: number;
@@ -54,5 +74,4 @@ export interface GameState {
   status: 'waiting' | 'playing' | 'won' | 'lost';
   lossReason?: string;
   actionsRemaining: number;
-  closedScenariosCount: number;
 }

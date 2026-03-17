@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Battery, ArrowRight } from 'lucide-react';
-import { Scenario, Player, TileState } from '../types';
+import { Scenario, TileState } from '../types';
 
 interface UpgradeDialogProps {
   scenario: Scenario;
   tileState: TileState;
-  player: Player;
+  availablePower: number;
   onClose: () => void;
   onContribute: (amount: number) => void;
 }
@@ -14,15 +14,16 @@ interface UpgradeDialogProps {
 export const UpgradeDialog: React.FC<UpgradeDialogProps> = ({
   scenario,
   tileState,
-  player,
+  availablePower,
   onClose,
   onContribute,
 }) => {
   const [amount, setAmount] = useState(0);
-  const totalContributed = (Object.values(tileState.contributions) as number[]).reduce((a, b) => a + b, 0);
-  const remaining = Math.max(0, scenario.game_stats.upgrade_cost - totalContributed);
-  const progressPct = Math.min(100, (totalContributed / scenario.game_stats.upgrade_cost) * 100);
-  const max = Math.min(player.batteries, remaining);
+  const totalContributed = (Object.values(tileState.contributions) as { battery: number; water: number }[])
+    .reduce((sum, item) => sum + item.battery, 0);
+  const remaining = Math.max(0, scenario.game_stats.green_upgrade_cost.battery - totalContributed);
+  const progressPct = Math.min(100, (totalContributed / scenario.game_stats.green_upgrade_cost.battery) * 100);
+  const max = Math.min(availablePower, remaining);
 
   return (
     <motion.div
@@ -68,7 +69,7 @@ export const UpgradeDialog: React.FC<UpgradeDialogProps> = ({
             <div className="flex justify-between items-baseline">
               <span className="text-sm font-bold text-stone-500">Progress</span>
               <span className="text-sm font-extrabold text-stone-900">
-                {totalContributed} / {scenario.game_stats.upgrade_cost}{' '}
+                {totalContributed} / {scenario.game_stats.green_upgrade_cost.battery}{' '}
                 <span className="text-base">🔋</span>
               </span>
             </div>
@@ -92,7 +93,7 @@ export const UpgradeDialog: React.FC<UpgradeDialogProps> = ({
                 style={{ backgroundColor: '#E4EFA6' }}
               >
                 <Battery className="w-3.5 h-3.5" />
-                {player.batteries} available
+                {availablePower} power
               </div>
             </div>
 

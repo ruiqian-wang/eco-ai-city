@@ -3,17 +3,28 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Leaf, Zap, AlertTriangle, Trophy, User, Users } from 'lucide-react';
 import { cn } from './lib/utils';
 import { GameState, Player, TileState } from './types';
-import { SCENARIOS, INITIAL_ENERGY, WIN_UPGRADE_COUNT } from './constants';
-import { ScenarioTile } from './components/ScenarioTile';
+import { SCENARIOS, INITIAL_MATERIALS, INITIAL_POWER, INITIAL_WATER, WIN_UPGRADE_COUNT } from './constants';
 import { ResourceHUD } from './components/ResourceHUD';
 import { ScenarioDetailPopup } from './components/ScenarioDetailPopup';
 import { v4 as uuidv4 } from 'uuid';
 
 const AVATAR_COLOR = '#93C5FD';
+const BOARD_SCENE_CONFIG = [
+  { id: 1, image: '/canteen.png', className: 'top-[9%] left-[24%] w-[14%]' },
+  { id: 2, image: '/studio.png', className: 'bottom-[6%] left-[44%] w-[18%]' },
+  { id: 3, image: '/health.png', className: 'top-[44%] left-[53%] w-[20%]' },
+  { id: 4, image: '/classroom.png', className: 'top-[32%] left-[14%] w-[14%]' },
+  { id: 5, image: '/garden.png', className: 'top-[50%] left-[26%] w-[20%]' },
+  { id: 6, image: '/security.png', className: 'bottom-[5%] left-[10%] w-[15%]' },
+  { id: 7, image: '/library.png', className: 'top-[24%] left-[40%] w-[15%]' },
+  { id: 8, image: '/teacher.png', className: 'top-[6%] left-[55%] w-[18%]' },
+] as const;
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState>({
-    publicEnergy: INITIAL_ENERGY,
+    publicPower: INITIAL_POWER,
+    publicWater: INITIAL_WATER,
+    publicMaterials: INITIAL_MATERIALS,
     players: {},
     playerOrder: [],
     currentPlayerIndex: 0,
@@ -24,33 +35,30 @@ export default function App() {
     round: 1,
     status: 'waiting',
     actionsRemaining: 1,
-    closedScenariosCount: 0,
   });
 
   const [viewingScenarioId, setViewingScenarioId] = useState<number | null>(null);
-  const [showJoinInput, setShowJoinInput] = useState(false);
+  const [fadingUnlockIds, setFadingUnlockIds] = useState<number[]>([]);
+  const [joiningSlotIndex, setJoiningSlotIndex] = useState<number | null>(null);
   const [joinName, setJoinName] = useState('');
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
+  const triggerLockFade = useCallback((tileId: number) => {
+    setFadingUnlockIds(prev => (prev.includes(tileId) ? prev : [...prev, tileId]));
+    window.setTimeout(() => {
+      setFadingUnlockIds(prev => prev.filter(id => id !== tileId));
+    }, 1800);
+  }, []);
+
   const checkGameStatus = useCallback((state: GameState): GameState => {
     if (state.status !== 'playing') return state;
 
-    const playerList = Object.values(state.players) as Player[];
-    const anyPlayerBroke = playerList.some(p => p.batteries < 0);
-    if (anyPlayerBroke) {
+    if (state.publicPower <= 0 || state.publicWater <= 0 || state.publicMaterials <= 0) {
       return {
         ...state,
         status: 'lost',
-        lossReason: "Social Inequality: A player has run out of batteries."
-      };
-    }
-
-    if (state.publicEnergy <= 0) {
-      return {
-        ...state,
-        status: 'lost',
-        lossReason: "Energy Depletion: The public power pool is empty."
+        lossReason: "Resource Depletion: Power, water, or materials ran out."
       };
     }
 
@@ -63,9 +71,9 @@ export default function App() {
     return state;
   }, []);
 
-  const calculateMaintenance = useCallback((state: GameState): GameState => {
-    let totalMaintenance = 0;
-    let totalBenefit = 0;
+  const calculateResourceConsumption = useCallback((state: GameState): GameState => {
+    let totalPower = 0;
+    let totalWater = 0;
 
     const tileList = Object.values(state.tiles) as TileState[];
     tileList.forEach(tile => {
@@ -73,14 +81,21 @@ export default function App() {
       if (!scenario) return;
 
       if (tile.status === 'red') {
-        totalMaintenance += scenario.game_stats.maintenance_fee;
-      } else if (tile.status === 'green') {
-        totalBenefit += scenario.green_transformation.green_benefit;
+        totalPower += scenario.game_stats.ai_operating_consumption_per_round.standard_ai.battery;
+        totalWater += scenario.game_stats.ai_operating_consumption_per_round.standard_ai.water;
+      }
+      if (tile.status === 'green') {
+        totalPower += scenario.game_stats.ai_operating_consumption_per_round.green_ai.battery;
+        totalWater += scenario.game_stats.ai_operating_consumption_per_round.green_ai.water;
       }
     });
 
-    const nextEnergy = Math.max(0, state.publicEnergy - totalMaintenance + totalBenefit);
-    return checkGameStatus({ ...state, publicEnergy: nextEnergy });
+    const nextState = {
+      ...state,
+      publicPower: Math.max(0, state.publicPower - totalPower),
+      publicWater: Math.max(0, state.publicWater - totalWater),
+    };
+    return checkGameStatus(nextState);
   }, [checkGameStatus]);
 
   const handleJoin = (name: string) => {
@@ -89,7 +104,9 @@ export default function App() {
       const newPlayer: Player = {
         id: playerId,
         name: name.trim(),
-        batteries: 0,
+        battery: 0,
+        water: 0,
+        materials: 0,
         color: AVATAR_COLOR,
         isReady: false,
         socketId: 'local',
@@ -100,7 +117,7 @@ export default function App() {
         playerOrder: [...prev.playerOrder, playerId]
       }));
       setJoinName('');
-      setShowJoinInput(false);
+      setJoiningSlotIndex(null);
     }
   };
 
@@ -121,10 +138,18 @@ export default function App() {
   const handleStartGame = () => {
     const playerList = gameState.playerOrder.map(pid => gameState.players[pid]).filter(Boolean) as Player[];
     if (playerList.length >= 3) {
-      const batteryPerPlayer = Math.floor(60 / playerList.length);
+      const n = playerList.length;
+      const perBattery = Math.floor(INITIAL_POWER / n);
+      const perWater = Math.floor(INITIAL_WATER / n);
+      const perMaterials = Math.floor(INITIAL_MATERIALS / n);
       const updatedPlayers = { ...gameState.players };
       playerList.forEach(p => {
-        updatedPlayers[p.id] = { ...p, batteries: batteryPerPlayer };
+        updatedPlayers[p.id] = {
+          ...p,
+          battery: perBattery,
+          water: perWater,
+          materials: perMaterials,
+        };
       });
       setGameState(prev => ({
         ...prev,
@@ -132,7 +157,7 @@ export default function App() {
         playerOrder: [...prev.playerOrder].sort(() => 0.5 - Math.random()),
         currentPlayerIndex: 0,
         actionsRemaining: 1,
-        players: updatedPlayers
+        players: updatedPlayers,
       }));
     }
   };
@@ -143,38 +168,41 @@ export default function App() {
 
     const tile = gameState.tiles[tileId];
     const scenario = SCENARIOS.find(s => s.id === tileId);
-    if (tile && scenario && tile.status === 'locked') {
-      if (gameState.publicEnergy >= scenario.game_stats.startup_cost) {
-        setGameState(prev => {
-          const nextState = {
-            ...prev,
-            publicEnergy: prev.publicEnergy - scenario.game_stats.startup_cost,
-            tiles: {
-              ...prev.tiles,
-              [tileId]: { ...tile, status: 'red' }
-            },
-            actionsRemaining: prev.actionsRemaining - 1
-          };
-          return checkGameStatus(nextState);
-        });
-      }
-    }
-  };
+    const activePlayer = activePlayerId ? gameState.players[activePlayerId] : null;
+    if (!tile || !scenario || tile.status !== 'locked' || !activePlayer) return;
 
-  const handleCloseTile = (tileId: number) => {
-    if (gameState.status !== 'playing' || gameState.closedScenariosCount >= 2) return;
+    const costP = scenario.game_stats.deployment_cost.battery;
+    const costW = scenario.game_stats.deployment_cost.water;
+    const costM = scenario.game_stats.deployment_cost.rare_materials;
+    if (activePlayer.battery < costP || activePlayer.water < costW || activePlayer.materials < costM) return;
+    if (gameState.publicPower < costP || gameState.publicWater < costW || gameState.publicMaterials < costM) return;
 
-    const tile = gameState.tiles[tileId];
-    if (tile && tile.status === 'red') {
-      setGameState(prev => ({
+    setGameState(prev => {
+      const p = prev.players[activePlayerId];
+      if (!p || p.battery < costP || p.water < costW || p.materials < costM) return prev;
+      const nextState = {
         ...prev,
+        publicPower: prev.publicPower - costP,
+        publicWater: prev.publicWater - costW,
+        publicMaterials: prev.publicMaterials - costM,
+        players: {
+          ...prev.players,
+          [activePlayerId]: {
+            ...p,
+            battery: p.battery - costP,
+            water: p.water - costW,
+            materials: p.materials - costM,
+          },
+        },
         tiles: {
           ...prev.tiles,
-          [tileId]: { ...tile, status: 'closed' }
+          [tileId]: { ...tile, status: 'red' as const }
         },
-        closedScenariosCount: prev.closedScenariosCount + 1
-      }));
-    }
+        actionsRemaining: prev.actionsRemaining - 1
+      };
+      return checkGameStatus(nextState);
+    });
+    triggerLockFade(tileId);
   };
 
   const handleEndTurn = () => {
@@ -190,56 +218,67 @@ export default function App() {
         nextRound++;
         nextState.round = nextRound;
         nextState.currentPlayerIndex = nextIndex;
-        return calculateMaintenance(nextState);
+        return calculateResourceConsumption(nextState);
       }
 
       return { ...nextState, currentPlayerIndex: nextIndex };
     });
   };
 
-  const handleContribute = (tileId: number, amount: number) => {
+  const handleContribute = (tileId: number, amount: { battery: number; water: number }) => {
     if (gameState.status !== 'playing') return;
     const activePlayerId = gameState.playerOrder[gameState.currentPlayerIndex];
-    const player = gameState.players[activePlayerId];
+    const activePlayer = activePlayerId ? gameState.players[activePlayerId] : null;
     const tile = gameState.tiles[tileId];
     const scenario = SCENARIOS.find(s => s.id === tileId);
 
-    if (player && tile && scenario && tile.status === 'red' && player.batteries >= amount) {
-      setGameState(prev => {
-        const updatedPlayer = { ...player, batteries: player.batteries - amount };
-        const updatedContributions = { 
-          ...tile.contributions, 
-          [activePlayerId]: (tile.contributions[activePlayerId] || 0) + amount 
-        };
-        const contributionValues = Object.values(updatedContributions) as number[];
-        const totalContributed = contributionValues.reduce((a, b) => a + b, 0);
-        const nextStatus = totalContributed >= scenario.game_stats.upgrade_cost ? 'green' : 'red';
+    if (!tile || !scenario || tile.status !== 'red' || !activePlayer) return;
+    if (amount.battery <= 0 && amount.water <= 0) return;
+    if (activePlayer.battery < amount.battery || activePlayer.water < amount.water) return;
+    if (gameState.publicPower < amount.battery || gameState.publicWater < amount.water) return;
 
-        const nextState = {
-          ...prev,
-          players: { ...prev.players, [activePlayerId]: updatedPlayer },
-          tiles: {
-            ...prev.tiles,
-            [tileId]: { ...tile, status: nextStatus, contributions: updatedContributions }
-          }
-        };
-        return checkGameStatus(nextState);
+    setGameState(prev => {
+      const p = prev.players[activePlayerId];
+      if (!p || p.battery < amount.battery || p.water < amount.water) return prev;
+      const updatedContributions = {
+        ...tile.contributions,
+        [activePlayerId]: {
+          battery: (tile.contributions[activePlayerId]?.battery || 0) + amount.battery,
+          water: (tile.contributions[activePlayerId]?.water || 0) + amount.water,
+        }
+      };
+      const contributionEntries = Object.values(updatedContributions) as { battery: number; water: number }[];
+      const totalBattery = contributionEntries.reduce((sum, c) => sum + c.battery, 0);
+      const totalWater = contributionEntries.reduce((sum, c) => sum + c.water, 0);
+      const nextStatus =
+        totalBattery >= scenario.game_stats.green_upgrade_cost.battery &&
+        totalWater >= scenario.game_stats.green_upgrade_cost.water
+          ? 'green'
+          : 'red';
+
+      return checkGameStatus({
+        ...prev,
+        publicPower: prev.publicPower - amount.battery,
+        publicWater: prev.publicWater - amount.water,
+        players: {
+          ...prev.players,
+          [activePlayerId]: {
+            ...p,
+            battery: p.battery - amount.battery,
+            water: p.water - amount.water,
+          },
+        },
+        tiles: {
+          ...prev.tiles,
+          [tileId]: { ...tile, status: nextStatus, contributions: updatedContributions }
+        }
       });
-    }
+    });
   };
 
   const activePlayerId = gameState.playerOrder[gameState.currentPlayerIndex];
   const currentPlayer = activePlayerId ? gameState.players[activePlayerId] : null;
   const players = Object.values(gameState.players) as Player[];
-  const isMyTurn = true; // In local mode, it's always the current user's turn (pass and play)
-
-  // Board Layout Logic (Monopoly style rectangle)
-  const gridPositions = [
-    "col-start-1 row-start-1", "col-start-2 row-start-1", "col-start-3 row-start-1", "col-start-4 row-start-1",
-    "col-start-4 row-start-2", "col-start-4 row-start-3",
-    "col-start-3 row-start-3", "col-start-2 row-start-3", "col-start-1 row-start-3",
-    "col-start-1 row-start-2"
-  ];
 
   const playerOrderInWaiting = gameState.playerOrder;
   const playersInLobby = playerOrderInWaiting.map(pid => gameState.players[pid]).filter(Boolean) as Player[];
@@ -318,10 +357,53 @@ export default function App() {
                   );
                 }
 
+                if (joiningSlotIndex === i) {
+                  return (
+                    <div
+                      key={`join-${i}`}
+                      className="flex items-center gap-2 px-4 py-3 rounded-2xl"
+                      style={{ backgroundColor: '#E4EFA6' }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                        style={{ backgroundColor: AVATAR_COLOR }}
+                      >
+                        ?
+                      </div>
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Your name…"
+                        value={joinName}
+                        onChange={(e) => setJoinName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleJoin(joinName);
+                          if (e.key === 'Escape') { setJoiningSlotIndex(null); setJoinName(''); }
+                        }}
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-stone-900 font-bold text-sm outline-none min-w-0"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        onClick={() => handleJoin(joinName)}
+                        className="shrink-0 px-3 py-1.5 rounded-xl text-stone-900 font-extrabold text-xs"
+                        style={{ backgroundColor: '#BDDF4D' }}
+                      >
+                        Join
+                      </button>
+                      <button
+                        onClick={() => { setJoiningSlotIndex(null); setJoinName(''); }}
+                        className="shrink-0 px-2 py-1.5 rounded-xl text-stone-500 font-medium text-xs hover:bg-white/60"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={`empty-${i}`}
-                    onClick={() => setShowJoinInput(true)}
+                    onClick={() => { setJoiningSlotIndex(i); setJoinName(''); }}
                     className="w-full px-4 py-3 rounded-2xl border-2 border-dashed flex items-center justify-center text-xs font-bold uppercase tracking-wider transition-all"
                     style={{ borderColor: '#BDDF4D', color: '#8aad00' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#E4EFA6'; }}
@@ -332,39 +414,6 @@ export default function App() {
                 );
               })}
             </div>
-
-            {/* Join input */}
-            {showJoinInput && (
-              <div className="mx-6 mt-2 p-4 rounded-2xl space-y-2" style={{ backgroundColor: '#E4EFA6' }}>
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Enter your name…"
-                  value={joinName}
-                  onChange={(e) => setJoinName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleJoin(joinName);
-                    if (e.key === 'Escape') { setShowJoinInput(false); setJoinName(''); }
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border-none outline-none text-stone-900 font-semibold text-sm shadow-sm"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleJoin(joinName)}
-                    className="flex-1 py-2 rounded-xl text-stone-900 font-extrabold text-sm transition-opacity hover:opacity-80"
-                    style={{ backgroundColor: '#ffffff', outline: '1px solid #BDDF4D'}}
-                  >
-                    Join
-                  </button>
-                  <button
-                    onClick={() => { setShowJoinInput(false); setJoinName(''); }}
-                    className="px-4 py-2 rounded-xl text-stone-500 font-medium text-sm bg-white"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Start button */}
             <div className="px-6 py-6 mt-2">
@@ -393,7 +442,7 @@ export default function App() {
             <ul className="space-y-4">
               {[
                 ['Click an empty slot to join. Click your name to rename.', '#EF702E'],
-                ['Unlock scenarios with shared energy, but watch the drain!', '#BDDF4D'],
+                ['Unlock scenarios with shared resources. Manage power, water, and materials!', '#BDDF4D'],
                 ['Upgrade to Green AI — save costs and earn benefits.', '#E4EFA6'],
               ].map(([text, bg], i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -415,76 +464,90 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-stone-900 p-6 font-sans">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start">
-        
-        {/* Left: Game Board */}
-        <div className="flex-1">
-          <div
-            className="relative rounded-3xl overflow-hidden"
-            style={{ aspectRatio: '1.18 / 1', backgroundColor: '#BDDF4D' }}
-          >
-            {/* board.svg decorative overlay (arrows / paths) */}
-            <img
-              src="/board.svg"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-              aria-hidden
-            />
+    <div className="relative min-h-screen bg-white text-stone-900 font-sans overflow-hidden">
+      <div className="absolute inset-0">
+        <img
+          src="/path.svg"
+          alt=""
+          className="absolute inset-y-0 left-0 w-full h-full object-fill pointer-events-none"
+          aria-hidden
+        />
+      </div>
 
-            {/* Scenario grid */}
-            <div className="absolute inset-0 grid grid-cols-4 grid-rows-3 gap-3 p-5">
-              {SCENARIOS.map((scenario, idx) => {
-                const state = gameState.tiles[scenario.id];
-                return (
-                  <div key={scenario.id} className={gridPositions[idx]}>
-                    <ScenarioTile
-                      scenario={scenario}
-                      state={state}
-                      isCurrentPlayer={isMyTurn}
-                      canClose={isMyTurn && gameState.closedScenariosCount < 2}
-                      onScenarioClick={(id) => setViewingScenarioId(id)}
-                      onPick={handlePickTile}
-                      onCloseClick={handleCloseTile}
+      <div className="absolute inset-0 z-10">
+        {BOARD_SCENE_CONFIG.map(({ id, image, className }) => {
+          const scenario = SCENARIOS.find(s => s.id === id);
+          const state = gameState.tiles[id];
+          if (!scenario || !state) return null;
+
+          const isLocked = state.status === 'locked';
+          const isUnlockFading = fadingUnlockIds.includes(id);
+          const isGreen = state.status === 'green';
+          const isRed = state.status === 'red';
+
+          return (
+            <button
+              key={id}
+              onClick={() => setViewingScenarioId(id)}
+              className={cn(
+                'absolute group transition-transform hover:scale-[1.02] active:scale-[0.98]',
+                className
+              )}
+            >
+              <img
+                src={image}
+                alt={scenario.name}
+                className="w-full h-auto select-none"
+              />
+
+              {/* Lock: center anchored on building so size doesn't shift position */}
+              <div className="absolute left-1/2 top-[60%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+                <AnimatePresence>
+                  {(isLocked || isUnlockFading) && (
+                    <motion.img
+                      key={`${id}-${isLocked ? 'locked' : 'fade'}`}
+                      src="/lock.svg"
+                      alt="locked"
+                      className="drop-shadow-md object-contain shrink-0"
+                      style={{ width: 260, height: 260 }}
+                      initial={{ opacity: 1, scale: 1 }}
+                      animate={{ opacity: isLocked ? 1 : 0, scale: isLocked ? 1 : 1.06 }}
+                      transition={{ duration: 1.6, ease: 'easeOut' }}
+                      exit={{ opacity: 0 }}
                     />
-                  </div>
-                );
-              })}
-
-              {/* Center: */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="flex flex-col items-center text-center space-y-3 pointer-events-auto">
-                  <div className="w-fit text-center text-xs font-bold text-stone-700 bg-white/85 backdrop-blur-sm rounded-xl px-3 py-1.5 shadow-sm">
-                    {currentPlayer?.name}'s Turn
-                  </div>
-                  <button
-                    onClick={handleEndTurn}
-                    className="px-6 py-2.5 text-white rounded-full text-sm font-extrabold hover:scale-105 transition-transform shadow-lg"
-                    style={{ backgroundColor: '#EF702E' }}
-                  >
-                    End Turn
-                  </button>
-                  <div
-                    className="w-fit items-center gap-2 rounded-full px-4 py-1.5 text-white text-xs font-bold shadow-md"
-                    style={{ backgroundColor: 'rgba(30,30,30,0.75)' }}
-                  >
-                    Closed Scenarios {gameState.closedScenariosCount}/2
-                  </div>
-                </div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
-          </div>
-        </div>
+              {/* Status icons (red/green) below lock */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-[58%] flex items-center justify-center gap-1.5">
+                {isRed && (
+                  <div className="rounded-full bg-[#EF702E]/95 p-2 shadow-md">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                {isGreen && (
+                  <div className="rounded-full bg-[#BDDF4D]/95 p-2 shadow-md border border-[#7FA700]/30">
+                    <Leaf className="w-5 h-5 text-[#2f4a00]" />
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Right: HUD */}
-        <div className="lg:w-80 xl:w-96 flex flex-col gap-4 pt-2">
+      <div className="relative z-20 min-h-screen flex justify-end items-start p-6 pt-24 pointer-events-none">
+        <div className="w-full max-w-sm pointer-events-auto">
           <ResourceHUD 
-            energy={gameState.publicEnergy} 
+            power={gameState.publicPower}
+            water={gameState.publicWater}
+            materials={gameState.publicMaterials}
             players={gameState.players}
             currentPlayerId={activePlayerId || ''}
             activePlayerId={activePlayerId || ''}
             playerOrder={gameState.playerOrder}
             round={gameState.round}
+            onEndTurn={handleEndTurn}
           />
         </div>
       </div>
@@ -495,12 +558,14 @@ export default function App() {
           <ScenarioDetailPopup
             scenario={SCENARIOS.find(s => s.id === viewingScenarioId)!}
             tileState={gameState.tiles[viewingScenarioId]}
-            publicEnergy={gameState.publicEnergy}
-            player={currentPlayer}
+            activePlayer={currentPlayer}
+            publicPower={gameState.publicPower}
+            publicWater={gameState.publicWater}
+            publicMaterials={gameState.publicMaterials}
             onClose={() => setViewingScenarioId(null)}
             onUnlock={(id) => { handlePickTile(id); setViewingScenarioId(null); }}
-            onConfirmContribution={(amount) => {
-              handleContribute(viewingScenarioId!, amount);
+            onConfirmContribution={(contribution) => {
+              handleContribute(viewingScenarioId!, contribution);
               setViewingScenarioId(null);
             }}
           />

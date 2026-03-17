@@ -1,0 +1,140 @@
+{
+  "general_building_deployment_costs": [
+    {
+      "building": "Library",
+      "battery": 5,
+      "water": 3,
+      "rare_materials": 1
+    },
+    {
+      "building": "Classroom",
+      "battery": 6,
+      "water": 3,
+      "rare_materials": 1
+    },
+    {
+      "building": "Canteen",
+      "battery": 4,
+      "water": 4,
+      "rare_materials": 1
+    },
+    {
+      "building": "Garden",
+      "battery": 4,
+      "water": 3,
+      "rare_materials": 1
+    },
+    {
+      "building": "Security",
+      "battery": 5,
+      "water": 3,
+      "rare_materials": 1
+    }
+  ],
+  "green_ai_upgrade_costs": [
+    {
+      "building": "Library",
+      "battery": 2,
+      "water": 1
+    },
+    {
+      "building": "Classroom",
+      "battery": 2,
+      "water": 1
+    },
+    {
+      "building": "Teacher",
+      "battery": 2,
+      "water": 2
+    },
+    {
+      "building": "Canteen",
+      "battery": 2,
+      "water": 2
+    },
+    {
+      "building": "Garden",
+      "battery": 1,
+      "water": 1
+    },
+    {
+      "building": "Studio",
+      "battery": 2,
+      "water": 2
+    },
+    {
+      "building": "Health",
+      "battery": 2,
+      "water": 2
+    },
+    {
+      "building": "Security",
+      "battery": 2,
+      "water": 1
+    }
+  ],
+  "ai_operating_consumption_per_round": [
+    {
+      "building": "Library",
+      "standard_ai": { "battery": 2, "water": 1 },
+      "green_ai": { "battery": 1, "water": 0 }
+    },
+    {
+      "building": "Classroom",
+      "standard_ai": { "battery": 2, "water": 1 },
+      "green_ai": { "battery": 1, "water": 0 }
+    },
+    {
+      "building": "Teacher",
+      "standard_ai": { "battery": 3, "water": 2 },
+      "green_ai": { "battery": 1, "water": 1 }
+    },
+    {
+      "building": "Canteen",
+      "standard_ai": { "battery": 2, "water": 2 },
+      "green_ai": { "battery": 1, "water": 1 }
+    },
+    {
+      "building": "Garden",
+      "standard_ai": { "battery": 1, "water": 1 },
+      "green_ai": { "battery": 0, "water": 0 }
+    },
+    {
+      "building": "Studio",
+      "standard_ai": { "battery": 3, "water": 2 },
+      "green_ai": { "battery": 1, "water": 1 }
+    },
+    {
+      "building": "Health",
+      "standard_ai": { "battery": 3, "water": 2 },
+      "green_ai": { "battery": 1, "water": 1 }
+    },
+    {
+      "building": "Security",
+      "standard_ai": { "battery": 2, "water": 1 },
+      "green_ai": { "battery": 1, "water": 0 }
+    }
+  ],
+  "special_building_options": {
+    "option_a": {
+      "name": "Full AI Deployment",
+      "pros": "Rapid deployment, lower initial cost",
+      "cons": "Ethical risks, potential for events triggered every round",
+      "costs": [
+        { "building": "Counseling Center", "battery": 5, "water": 4, "rare_materials": 1 },
+        { "building": "Creative Arts Studio", "battery": 6, "water": 4, "rare_materials": 1 },
+        { "building": "Teachers Office", "battery": 5, "water": 4, "rare_materials": 1 }
+      ]
+    },
+    "option_b": {
+      "name": "Human-AI Collaboration",
+      "pros": "Reduced ethical risks, higher long-term security",
+      "cons": "Slightly higher initial cost",
+      "costs": [
+        { "building": "Counseling Center", "battery": 6, "water": 4, "rare_materials": 1 },
+        { "building": "Creative Arts Studio", "battery": 7, "water": 4, "rare_materials": 1 },
+        { "building": "Teachers Office", "battery": 6, "water": 4, "rare_materials": 1 }
+      ]
+    }
+  }
+}

@@ -1,44 +1,67 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, AlertTriangle, ArrowUpCircle, Zap, Battery, ArrowRight } from 'lucide-react';
+import { X, AlertTriangle, ArrowUpCircle, Zap, Battery, Droplets, Gem, ArrowRight } from 'lucide-react';
 import { Scenario, TileState, Player } from '../types';
 
 interface ScenarioDetailPopupProps {
   scenario: Scenario;
   tileState: TileState | undefined;
-  publicEnergy: number;
-  player: Player;
+  activePlayer: Player;
+  publicPower: number;
+  publicWater: number;
+  publicMaterials: number;
   onClose: () => void;
   onUnlock?: (id: number) => void;
-  onConfirmContribution?: (amount: number) => void;
+  onConfirmContribution?: (amount: { battery: number; water: number }) => void;
 }
 
 export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
   scenario,
   tileState,
-  publicEnergy,
-  player,
+  activePlayer,
+  publicPower,
+  publicWater,
+  publicMaterials,
   onClose,
   onUnlock,
   onConfirmContribution,
 }) => {
   const [expandedContribute, setExpandedContribute] = useState(false);
-  const [amount, setAmount] = useState(0);
+  const [batteryAmount, setBatteryAmount] = useState(0);
+  const [waterAmount, setWaterAmount] = useState(0);
 
   const isLocked = tileState?.status === 'locked';
   const isRed = tileState?.status === 'red';
-  const canUnlock = isLocked && publicEnergy >= scenario.game_stats.startup_cost;
+  const isGreen = tileState?.status === 'green';
+  const rc = scenario.game_stats.deployment_cost;
+  const canUnlock = isLocked &&
+    activePlayer.battery >= rc.battery &&
+    activePlayer.water >= rc.water &&
+    activePlayer.materials >= rc.rare_materials &&
+    publicPower >= rc.battery &&
+    publicWater >= rc.water &&
+    publicMaterials >= rc.rare_materials;
 
-  const totalContributed = tileState
-    ? (Object.values(tileState.contributions) as number[]).reduce((a, b) => a + b, 0)
-    : 0;
-  const remaining = Math.max(0, scenario.game_stats.upgrade_cost - totalContributed);
-  const progressPct = Math.min(100, (totalContributed / scenario.game_stats.upgrade_cost) * 100);
-  const max = Math.min(player.batteries, remaining);
+  const contributionEntries = tileState ? Object.values(tileState.contributions) as { battery: number; water: number }[] : [];
+  const totalContributedBattery = contributionEntries.reduce((sum, item) => sum + item.battery, 0);
+  const totalContributedWater = contributionEntries.reduce((sum, item) => sum + item.water, 0);
+  const remainingBattery = Math.max(0, scenario.game_stats.green_upgrade_cost.battery - totalContributedBattery);
+  const remainingWater = Math.max(0, scenario.game_stats.green_upgrade_cost.water - totalContributedWater);
+  const progressPctBattery =
+    scenario.game_stats.green_upgrade_cost.battery === 0
+      ? 100
+      : Math.min(100, (totalContributedBattery / scenario.game_stats.green_upgrade_cost.battery) * 100);
+  const progressPctWater =
+    scenario.game_stats.green_upgrade_cost.water === 0
+      ? 100
+      : Math.min(100, (totalContributedWater / scenario.game_stats.green_upgrade_cost.water) * 100);
+  const progressPct = Math.min(progressPctBattery, progressPctWater);
+  const maxBattery = Math.min(activePlayer.battery, publicPower, remainingBattery);
+  const maxWater = Math.min(activePlayer.water, publicWater, remainingWater);
 
   const handleConfirm = () => {
-    if (amount <= 0 || !onConfirmContribution) return;
-    onConfirmContribution(amount);
+    if ((batteryAmount <= 0 && waterAmount <= 0) || !onConfirmContribution) return;
+    onConfirmContribution({ battery: batteryAmount, water: waterAmount });
   };
 
   return (
@@ -109,14 +132,42 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
         <div className="px-5 py-4 bg-white space-y-2">
           {isLocked && onUnlock && (
             <button
-              disabled={!canUnlock}
               onClick={() => onUnlock(scenario.id)}
-              className="w-full py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white"
+              className="w-full py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] text-white"
               style={{ backgroundColor: '#EF702E' }}
             >
               <Zap className="w-4 h-4" />
-              Unlock Scenario — {scenario.game_stats.startup_cost} ⚡
+              <span>Unlock —</span>
+              <span className="flex items-center gap-2">
+                <span className="flex items-center gap-0.5">
+                  <Battery className="w-4 h-4" />
+                  {rc.battery}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Droplets className="w-4 h-4" />
+                  {rc.water}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Gem className="w-4 h-4" />
+                  {rc.rare_materials}
+                </span>
+              </span>
             </button>
+          )}
+          {(isRed || isGreen) && (
+            <div className="rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-700 space-y-1">
+              <div className="font-bold">
+                Per round consumption:
+                <span className="ml-2">
+                  Standard B {scenario.game_stats.ai_operating_consumption_per_round.standard_ai.battery} / W {scenario.game_stats.ai_operating_consumption_per_round.standard_ai.water},
+                  Green B {scenario.game_stats.ai_operating_consumption_per_round.green_ai.battery} / W {scenario.game_stats.ai_operating_consumption_per_round.green_ai.water}
+                </span>
+              </div>
+              <div className="font-bold">
+                Green upgrade required:
+                <span className="ml-2">B {scenario.game_stats.green_upgrade_cost.battery} / W {scenario.game_stats.green_upgrade_cost.water}</span>
+              </div>
+            </div>
           )}
           {isRed && !expandedContribute && onConfirmContribution && (
             <button
@@ -127,6 +178,11 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
               <Battery className="w-4 h-4" />
               Contribute to Upgrade
             </button>
+          )}
+          {isLocked && !canUnlock && (
+            <div className="text-xs font-semibold text-stone-500">
+              Resource not enough yet, but you can still click unlock.
+            </div>
           )}
         </div>
 
@@ -146,7 +202,7 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
                   <div className="flex justify-between items-baseline">
                     <span className="text-sm font-bold text-stone-500">Progress</span>
                     <span className="text-sm font-extrabold text-stone-900">
-                      {totalContributed} / {scenario.game_stats.upgrade_cost} 🔋
+                      B {totalContributedBattery}/{scenario.game_stats.green_upgrade_cost.battery} · W {totalContributedWater}/{scenario.game_stats.green_upgrade_cost.water}
                     </span>
                   </div>
                   <div className="w-full h-2.5 bg-stone-200 rounded-full overflow-hidden">
@@ -163,38 +219,52 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
                 {/* Your Contribution */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-extrabold text-stone-900">Your Contribution</span>
+                    <span className="text-sm font-extrabold text-stone-900">Your contribution</span>
                     <div
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold text-stone-700"
                       style={{ backgroundColor: '#E4EFA6' }}
                     >
                       <Battery className="w-3.5 h-3.5" />
-                      {player.batteries} available
+                      B {activePlayer.battery} · W {activePlayer.water}
                     </div>
                   </div>
+                  <div className="text-xs font-bold text-stone-600">Battery</div>
                   <input
                     type="range"
                     min={0}
-                    max={max}
-                    value={amount}
-                    onChange={(e) => setAmount(parseInt(e.target.value))}
+                    max={maxBattery}
+                    value={batteryAmount}
+                    onChange={(e) => setBatteryAmount(parseInt(e.target.value, 10))}
                     className="w-full h-2 rounded-full appearance-none cursor-pointer bg-stone-200"
                     style={{ accentColor: '#BDDF4D' }}
                   />
-                  <div className="flex justify-center">
-                    <span className="text-4xl font-extrabold tabular-nums" style={{ color: '#BDDF4D' }}>
-                      {amount}
+                  <div className="text-xs font-bold text-stone-600">Water</div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxWater}
+                    value={waterAmount}
+                    onChange={(e) => setWaterAmount(parseInt(e.target.value, 10))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer bg-stone-200"
+                    style={{ accentColor: '#60A5FA' }}
+                  />
+                  <div className="flex justify-center gap-6">
+                    <span className="text-3xl font-extrabold tabular-nums" style={{ color: '#BDDF4D' }}>
+                      B {batteryAmount}
+                    </span>
+                    <span className="text-3xl font-extrabold tabular-nums text-sky-500">
+                      W {waterAmount}
                     </span>
                   </div>
                 </div>
 
                 {/* Confirm */}
                 <button
-                  disabled={amount <= 0}
+                  disabled={batteryAmount <= 0 && waterAmount <= 0}
                   onClick={handleConfirm}
                   className="w-full py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] group disabled:opacity-40 disabled:cursor-not-allowed"
                   style={
-                    amount > 0
+                    batteryAmount > 0 || waterAmount > 0
                       ? { backgroundColor: '#BDDF4D', color: '#1a1a1a' }
                       : { backgroundColor: '#e5e7eb', color: '#9ca3af' }
                   }
