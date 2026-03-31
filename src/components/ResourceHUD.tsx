@@ -17,6 +17,8 @@ interface ResourceHUDProps {
   playerOrder: string[];
   round: number;
   onEndTurn?: () => void;
+  /** When true, omit outer top margin (e.g. inside a modal) */
+  inModal?: boolean;
 }
 
 export const ResourceHUD: React.FC<ResourceHUDProps> = ({
@@ -29,6 +31,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
   playerOrder,
   round,
   onEndTurn,
+  inModal = false,
 }) => {
   const activeIndex = playerOrder.indexOf(activePlayerId);
   const resourceConfig = [
@@ -39,7 +42,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
 
   return (
     <div
-      className="relative rounded-3xl p-4 lg:p-5 w-full shadow-sm overflow-hidden mt-6"
+      className={cn('relative rounded-3xl p-4 lg:p-5 w-full shadow-sm overflow-hidden', !inModal && 'mt-6')}
       style={{
         backgroundImage: 'url(/player-bg.svg)',
         backgroundSize: 'cover',
@@ -73,53 +76,57 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })}
       </div>
 
-      <div className="bg-white rounded-3xl px-4 py-2 shadow-sm">
+      <div className="bg-white rounded-2xl px-3 py-1.5 shadow-sm space-y-0">
         {playerOrder.map((pid, idx) => {
           const player = players[pid];
           if (!player) return null;
           const isActive = pid === activePlayerId;
-          const isMe = pid === currentPlayerId;
 
           return (
             <div key={pid}>
-              <div className={cn('flex items-center gap-3 py-4', isActive && 'relative')}>
-                <div className="w-12 h-12 rounded-full bg-pink-300 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-lg font-bold text-stone-900 truncate">
-                    {player.name}{isMe ? ' (You)' : ''}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-stone-800 shrink-0">
-                  <div className="flex items-center gap-0.5 text-sm font-bold">
-                    <Battery className="w-4 h-4" />
-                    <span>{player.battery ?? 0}</span>
-                  </div>
-                  <div className="flex items-center gap-0.5 text-sm font-bold">
-                    <Droplets className="w-4 h-4" />
-                    <span>{player.water ?? 0}</span>
-                  </div>
-                  <div className="flex items-center gap-0.5 text-sm font-bold">
-                    <Gem className="w-4 h-4" />
-                    <span>{player.materials ?? 0}</span>
-                  </div>
-                </div>
-
-                {isActive && (
-                  <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[10px] border-b-[10px] border-r-[14px] border-transparent border-r-pink-300" />
+              <div
+                className={cn(
+                  'flex items-center gap-2 py-2.5 px-2 rounded-xl transition-colors',
+                  isActive && 'bg-stone-50'
                 )}
+              >
+                <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1a1a1a] shrink-0" />
+                  )}
+                  <span className={cn(
+                    'text-sm truncate',
+                    isActive ? 'font-extrabold text-stone-900' : 'font-semibold text-stone-500'
+                  )}>
+                    {player.name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className="flex items-center gap-0.5 text-xs font-bold text-stone-600">
+                    <Battery className="w-3 h-3 text-stone-400" />
+                    {player.battery ?? 0}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-xs font-bold text-stone-600">
+                    <Droplets className="w-3 h-3 text-stone-400" />
+                    {player.water ?? 0}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-xs font-bold text-stone-600">
+                    <Gem className="w-3 h-3 text-stone-400" />
+                    {player.materials ?? 0}
+                  </span>
+                </div>
               </div>
-              {idx < playerOrder.length - 1 && <div className="h-px bg-stone-200" />}
+              {idx < playerOrder.length - 1 && <div className="h-px bg-stone-100 mx-2" />}
             </div>
           );
         })}
 
         {onEndTurn && (
-          <div className="pt-3 pb-2">
+          <div className="pt-2 pb-1.5 px-1">
             <button
               onClick={onEndTurn}
-              className="w-full py-3 text-white rounded-2xl text-sm font-extrabold hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg"
-              style={{ backgroundColor: '#EF702E' }}
+              className="w-full py-3 rounded-full text-sm font-extrabold text-white hover:bg-stone-800 active:scale-[0.98] transition-all bg-[#1a1a1a]"
             >
               End Turn
             </button>

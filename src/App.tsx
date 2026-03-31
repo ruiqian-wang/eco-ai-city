@@ -2,22 +2,22 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Leaf, Zap, AlertTriangle, Trophy, User, Users } from 'lucide-react';
 import { cn } from './lib/utils';
-import { GameState, Player, TileState } from './types';
-import { SCENARIOS, INITIAL_MATERIALS, INITIAL_POWER, INITIAL_WATER, WIN_UPGRADE_COUNT } from './constants';
+import { GameState, Player, TileState, PlanChoice, Scenario, CrisisCard } from './types';
+import { SCENARIOS, INITIAL_MATERIALS, INITIAL_POWER, INITIAL_WATER, WIN_UPGRADE_COUNT, PLAYER_ACTIONS, CRISIS_CARDS } from './constants';
 import { ResourceHUD } from './components/ResourceHUD';
 import { ScenarioDetailPopup } from './components/ScenarioDetailPopup';
 import { v4 as uuidv4 } from 'uuid';
 
 const AVATAR_COLOR = '#93C5FD';
 const BOARD_SCENE_CONFIG = [
-  { id: 1, image: '/canteen.png', className: 'top-[9%] left-[24%] w-[14%]' },
-  { id: 2, image: '/studio.png', className: 'bottom-[6%] left-[44%] w-[18%]' },
-  { id: 3, image: '/health.png', className: 'top-[44%] left-[53%] w-[20%]' },
-  { id: 4, image: '/classroom.png', className: 'top-[32%] left-[14%] w-[14%]' },
-  { id: 5, image: '/garden.png', className: 'top-[50%] left-[26%] w-[20%]' },
-  { id: 6, image: '/security.png', className: 'bottom-[5%] left-[10%] w-[15%]' },
-  { id: 7, image: '/library.png', className: 'top-[24%] left-[40%] w-[15%]' },
-  { id: 8, image: '/teacher.png', className: 'top-[6%] left-[55%] w-[18%]' },
+  { id: 1, image: '/canteen.png', className: 'top-[4%] left-[22%] w-[13%]' },
+  { id: 8, image: '/teacher.png', className: 'top-[4%] left-[50%] w-[15%]' },
+  { id: 7, image: '/library.png', className: 'top-[24%] left-[36%] w-[13%]' },
+  { id: 4, image: '/classroom.png', className: 'top-[28%] left-[12%] w-[13%]' },
+  { id: 3, image: '/health.png', className: 'top-[42%] left-[54%] w-[15%]' },
+  { id: 5, image: '/garden.png', className: 'top-[52%] left-[28%] w-[16%]' },
+  { id: 6, image: '/security.png', className: 'bottom-[4%] left-[10%] w-[13%]' },
+  { id: 2, image: '/studio.png', className: 'bottom-[4%] left-[46%] w-[15%]' },
 ] as const;
 
 export default function App() {
@@ -39,6 +39,8 @@ export default function App() {
 
   const [viewingScenarioId, setViewingScenarioId] = useState<number | null>(null);
   const [fadingUnlockIds, setFadingUnlockIds] = useState<number[]>([]);
+  const [unlockNotice, setUnlockNotice] = useState<string | null>(null);
+  const [activeCrisis, setActiveCrisis] = useState<CrisisCard | null>(null);
   const [joiningSlotIndex, setJoiningSlotIndex] = useState<number | null>(null);
   const [joinName, setJoinName] = useState('');
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -49,6 +51,42 @@ export default function App() {
     window.setTimeout(() => {
       setFadingUnlockIds(prev => prev.filter(id => id !== tileId));
     }, 1800);
+  }, []);
+
+  const getStatsForTile = useCallback((scenario: Scenario, tile?: TileState) => {
+    if (!scenario.dual_path) return scenario.game_stats;
+    const plan = tile?.selectedPlan;
+    if (plan === 'B') return scenario.dual_path.planB.game_stats;
+    return scenario.dual_path.planA.game_stats;
+  }, []);
+
+  const sceneKeyByScenarioName: Record<string, CrisisCard['scene']> = {
+    'Teacher Office': 'teacher_office',
+    'Creative Studio': 'creative_studio',
+    'Mental Health': 'mental_health',
+  };
+
+  const applyCrisisCost = useCallback((state: GameState, cost: { battery: number; water: number }): GameState => {
+    return {
+      ...state,
+      publicPower: Math.max(0, state.publicPower - cost.battery),
+      publicWater: Math.max(0, state.publicWater - cost.water),
+    };
+  }, []);
+
+  const drawCrisisCard = useCallback((state: GameState): CrisisCard | null => {
+    const eligibleScenes = new Set<CrisisCard['scene']>();
+    for (const tile of Object.values(state.tiles) as TileState[]) {
+      if (tile.status !== 'red' || tile.selectedPlan !== 'A') continue;
+      const scenario = SCENARIOS.find(s => s.id === tile.id);
+      if (!scenario?.dual_path) continue;
+      const sceneKey = sceneKeyByScenarioName[scenario.name];
+      if (sceneKey) eligibleScenes.add(sceneKey);
+    }
+    if (eligibleScenes.size === 0) return null;
+    const pool = CRISIS_CARDS.filter(card => eligibleScenes.has(card.scene));
+    if (pool.length === 0) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
   }, []);
 
   const checkGameStatus = useCallback((state: GameState): GameState => {
@@ -79,24 +117,25 @@ export default function App() {
     tileList.forEach(tile => {
       const scenario = SCENARIOS.find(s => s.id === tile.id);
       if (!scenario) return;
+      const stats = getStatsForTile(scenario, tile);
 
       if (tile.status === 'red') {
-        totalPower += scenario.game_stats.ai_operating_consumption_per_round.standard_ai.battery;
-        totalWater += scenario.game_stats.ai_operating_consumption_per_round.standard_ai.water;
+        totalPower += stats.ai_operating_consumption_per_round.standard_ai.battery;
+        totalWater += stats.ai_operating_consumption_per_round.standard_ai.water;
       }
       if (tile.status === 'green') {
-        totalPower += scenario.game_stats.ai_operating_consumption_per_round.green_ai.battery;
-        totalWater += scenario.game_stats.ai_operating_consumption_per_round.green_ai.water;
+        totalPower += stats.ai_operating_consumption_per_round.green_ai.battery;
+        totalWater += stats.ai_operating_consumption_per_round.green_ai.water;
       }
     });
 
-    const nextState = {
+    const consumedState = {
       ...state,
       publicPower: Math.max(0, state.publicPower - totalPower),
       publicWater: Math.max(0, state.publicWater - totalWater),
     };
-    return checkGameStatus(nextState);
-  }, [checkGameStatus]);
+    return checkGameStatus(consumedState);
+  }, [checkGameStatus, getStatsForTile]);
 
   const handleJoin = (name: string) => {
     if (name.trim() && gameState.playerOrder.length < 6) {
@@ -162,20 +201,28 @@ export default function App() {
     }
   };
 
-  const handlePickTile = (tileId: number) => {
+  const handlePickTile = (tileId: number, planChoice?: PlanChoice): boolean => {
     const activePlayerId = gameState.playerOrder[gameState.currentPlayerIndex];
-    if (gameState.status !== 'playing' || gameState.actionsRemaining <= 0) return;
+    if (gameState.status !== 'playing') return false;
+    if (gameState.actionsRemaining <= 0) {
+      setUnlockNotice('You can unlock only one scene per turn. Consider contribute to upgrade or end turn.');
+      return false;
+    }
 
     const tile = gameState.tiles[tileId];
     const scenario = SCENARIOS.find(s => s.id === tileId);
     const activePlayer = activePlayerId ? gameState.players[activePlayerId] : null;
-    if (!tile || !scenario || tile.status !== 'locked' || !activePlayer) return;
+    if (!tile || !scenario || tile.status !== 'locked' || !activePlayer) return false;
 
-    const costP = scenario.game_stats.deployment_cost.battery;
-    const costW = scenario.game_stats.deployment_cost.water;
-    const costM = scenario.game_stats.deployment_cost.rare_materials;
-    if (activePlayer.battery < costP || activePlayer.water < costW || activePlayer.materials < costM) return;
-    if (gameState.publicPower < costP || gameState.publicWater < costW || gameState.publicMaterials < costM) return;
+    if (scenario.dual_path && !planChoice) return false;
+    const unlockStats = scenario.dual_path
+      ? (planChoice === 'B' ? scenario.dual_path.planB.game_stats : scenario.dual_path.planA.game_stats)
+      : scenario.game_stats;
+    const costP = unlockStats.deployment_cost.battery;
+    const costW = unlockStats.deployment_cost.water;
+    const costM = unlockStats.deployment_cost.rare_materials;
+    if (activePlayer.battery < costP || activePlayer.water < costW || activePlayer.materials < costM) return false;
+    if (gameState.publicPower < costP || gameState.publicWater < costW || gameState.publicMaterials < costM) return false;
 
     setGameState(prev => {
       const p = prev.players[activePlayerId];
@@ -196,33 +243,53 @@ export default function App() {
         },
         tiles: {
           ...prev.tiles,
-          [tileId]: { ...tile, status: 'red' as const }
+          [tileId]: { ...tile, status: 'red' as const, selectedPlan: scenario.dual_path ? (planChoice || 'A') : undefined }
         },
         actionsRemaining: prev.actionsRemaining - 1
       };
       return checkGameStatus(nextState);
     });
     triggerLockFade(tileId);
+    return true;
   };
 
   const handleEndTurn = () => {
-    if (gameState.status !== 'playing') return;
+    if (gameState.status !== 'playing' || activeCrisis) return;
 
-    setGameState(prev => {
-      let nextIndex = prev.currentPlayerIndex + 1;
-      let nextRound = prev.round;
-      let nextState = { ...prev, actionsRemaining: 1 };
+    const nextIndex = gameState.currentPlayerIndex + 1;
+    if (nextIndex < gameState.playerOrder.length) {
+      setGameState(prev => ({
+        ...prev,
+        currentPlayerIndex: prev.currentPlayerIndex + 1,
+        actionsRemaining: 1,
+      }));
+      return;
+    }
 
-      if (nextIndex >= prev.playerOrder.length) {
-        nextIndex = 0;
-        nextRound++;
-        nextState.round = nextRound;
-        nextState.currentPlayerIndex = nextIndex;
-        return calculateResourceConsumption(nextState);
+    const roundAdvancedState: GameState = {
+      ...gameState,
+      round: gameState.round + 1,
+      currentPlayerIndex: 0,
+      actionsRemaining: 1,
+    };
+    let nextState = calculateResourceConsumption(roundAdvancedState);
+    const crisis = drawCrisisCard(nextState);
+    if (crisis) {
+      if (crisis.consequence_type === 'fixed' && crisis.cost) {
+        nextState = checkGameStatus(applyCrisisCost(nextState, crisis.cost));
       }
+      setActiveCrisis(crisis);
+    }
+    setGameState(nextState);
+  };
 
-      return { ...nextState, currentPlayerIndex: nextIndex };
-    });
+  const handleResolveChoiceCrisis = (cost: { battery: number; water: number }) => {
+    setGameState(prev => checkGameStatus(applyCrisisCost(prev, cost)));
+    setActiveCrisis(null);
+  };
+
+  const handleAcknowledgeFixedCrisis = () => {
+    setActiveCrisis(null);
   };
 
   const handleContribute = (tileId: number, amount: { battery: number; water: number }) => {
@@ -231,8 +298,9 @@ export default function App() {
     const activePlayer = activePlayerId ? gameState.players[activePlayerId] : null;
     const tile = gameState.tiles[tileId];
     const scenario = SCENARIOS.find(s => s.id === tileId);
+    const activeStats = scenario && tile ? getStatsForTile(scenario, tile) : null;
 
-    if (!tile || !scenario || tile.status !== 'red' || !activePlayer) return;
+    if (!tile || !scenario || !activeStats || tile.status !== 'red' || !activePlayer) return;
     if (amount.battery <= 0 && amount.water <= 0) return;
     if (activePlayer.battery < amount.battery || activePlayer.water < amount.water) return;
     if (gameState.publicPower < amount.battery || gameState.publicWater < amount.water) return;
@@ -251,8 +319,8 @@ export default function App() {
       const totalBattery = contributionEntries.reduce((sum, c) => sum + c.battery, 0);
       const totalWater = contributionEntries.reduce((sum, c) => sum + c.water, 0);
       const nextStatus =
-        totalBattery >= scenario.game_stats.green_upgrade_cost.battery &&
-        totalWater >= scenario.game_stats.green_upgrade_cost.water
+        totalBattery >= activeStats.green_upgrade_cost.battery &&
+        totalWater >= activeStats.green_upgrade_cost.water
           ? 'green'
           : 'red';
 
@@ -287,32 +355,36 @@ export default function App() {
     const canStart = playersInLobby.length >= 3;
 
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-6 font-sans"
-        style={{ backgroundColor: '#ffffff' }}
-      >
-        <div className="max-w-4xl w-full flex flex-row justify-center items-center gap-6">
+      <div className="min-h-screen font-sans relative overflow-hidden" style={{ backgroundColor: '#f5f1ec' }}>
 
-          {/* Left: Player Panel */}
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden w-1/2">
-            {/* Title bar */}
-            <div className="px-8 pt-8 pb-5">
-              <div className="flex items-center gap-3 mb-1">
-                <div
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: '#E4EFA6' }}
-                >
-                  <Users className="w-5 h-5" style={{ color: '#6b8a00' }} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-extrabold text-stone-900">Eco-AI Campus</h2>
-                  <p className="text-xs text-stone-400 font-medium">{playersInLobby.length} / 6 players</p>
-                </div>
-              </div>
-            </div>
+        {/* Hero section */}
+        <div className="relative pt-12 pb-8 px-6 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-stone-400 mb-4">Welcome to</p>
+          <h1 className="text-[clamp(2.5rem,6vw,4.5rem)] font-black text-stone-900 leading-[1.05] tracking-tight">
+            Eco-AI<br />Campus
+          </h1>
+          <p className="mt-4 text-sm text-stone-500 max-w-xs mx-auto leading-relaxed">
+            Build sustainable AI for your campus.
+            <br />
+            Collaborate with others to go green.
+          </p>
+
+          {/* Floating accent badges */}
+          <div className="absolute top-8 right-[8%] bg-[#1a1a1a] text-white text-[11px] font-extrabold px-3 py-1.5 rounded-xl rotate-6 shadow-lg select-none">{playersInLobby.length}/6</div>
+          <div className="absolute top-24 left-[6%] bg-[#4abe6a] text-white text-[10px] font-extrabold px-4 py-2 rounded-full -rotate-12 shadow-md select-none">GREEN AI</div>
+          <div className="absolute top-16 right-[16%] bg-[#f18a47] text-white text-[10px] font-extrabold px-4 py-2 rounded-full rotate-3 shadow-md select-none">DEPLOY</div>
+          <div className="hidden md:block absolute top-36 left-[12%] bg-[#ffd43b] text-stone-900 text-[10px] font-extrabold px-4 py-2 rounded-xl rotate-6 shadow-md select-none">UPGRADE</div>
+        </div>
+
+        {/* Main content */}
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-5 pb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.85fr] gap-5 items-center">
+
+            {/* Player card */}
+            <div className="bg-white rounded-[28px] shadow-[0_4px_40px_rgba(0,0,0,0.06)] overflow-hidden">
 
             {/* Player Slots */}
-            <div className="px-6 pb-2 space-y-2.5">
+            <div className="px-6 pt-6 pb-2 space-y-2">
               {Array.from({ length: 6 }, (_, i) => {
                 const pid = playerOrderInWaiting[i];
                 const p = pid ? gameState.players[pid] : null;
@@ -322,11 +394,10 @@ export default function App() {
                   return (
                     <div
                       key={p.id}
-                      className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                      style={{ backgroundColor: '#E4EFA6' }}
+                      className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#f8f6f3] transition-all hover:bg-[#f3f0ec]"
                     >
                       <div
-                        className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                        className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
                         style={{ backgroundColor: p.color }}
                       >
                         {p.name[0]?.toUpperCase()}
@@ -341,18 +412,18 @@ export default function App() {
                             if (e.key === 'Enter') handleRename(p.id, editingName);
                             if (e.key === 'Escape') { setEditingPlayerId(null); setEditingName(''); }
                           }}
-                          className="flex-1 px-2 py-0.5 bg-white border border-stone-200 rounded-lg text-stone-900 font-bold text-sm outline-none"
+                          className="flex-1 px-3 py-1 bg-white border border-stone-200 rounded-xl text-stone-900 font-bold text-sm outline-none"
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
                         <span
-                          className="flex-1 font-bold text-stone-800 text-sm cursor-pointer hover:underline"
+                          className="flex-1 font-semibold text-stone-800 text-sm cursor-pointer hover:text-stone-600 transition-colors"
                           onClick={() => { setEditingPlayerId(p.id); setEditingName(p.name); }}
                         >
                           {p.name}
                         </span>
                       )}
-                      <span className="text-[10px] font-bold text-stone-400 uppercase">Player {i + 1}</span>
+                      <span className="text-[10px] font-bold text-stone-300 uppercase">P{i + 1}</span>
                     </div>
                   );
                 }
@@ -361,11 +432,10 @@ export default function App() {
                   return (
                     <div
                       key={`join-${i}`}
-                      className="flex items-center gap-2 px-4 py-3 rounded-2xl"
-                      style={{ backgroundColor: '#E4EFA6' }}
+                      className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-[#f8f6f3] border border-stone-200"
                     >
                       <div
-                        className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
+                        className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
                         style={{ backgroundColor: AVATAR_COLOR }}
                       >
                         ?
@@ -385,14 +455,13 @@ export default function App() {
                       />
                       <button
                         onClick={() => handleJoin(joinName)}
-                        className="shrink-0 px-3 py-1.5 rounded-xl text-stone-900 font-extrabold text-xs"
-                        style={{ backgroundColor: '#BDDF4D' }}
+                        className="shrink-0 px-4 py-2 rounded-full text-white font-extrabold text-xs bg-[#1a1a1a] hover:bg-stone-800 transition-colors"
                       >
                         Join
                       </button>
                       <button
                         onClick={() => { setJoiningSlotIndex(null); setJoinName(''); }}
-                        className="shrink-0 px-2 py-1.5 rounded-xl text-stone-500 font-medium text-xs hover:bg-white/60"
+                        className="shrink-0 px-2 py-1.5 rounded-xl text-stone-400 text-xs hover:text-stone-600"
                       >
                         Cancel
                       </button>
@@ -404,10 +473,7 @@ export default function App() {
                   <button
                     key={`empty-${i}`}
                     onClick={() => { setJoiningSlotIndex(i); setJoinName(''); }}
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-dashed flex items-center justify-center text-xs font-bold uppercase tracking-wider transition-all"
-                    style={{ borderColor: '#BDDF4D', color: '#8aad00' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#E4EFA6'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                    className="w-full px-4 py-3.5 rounded-2xl border border-dashed border-stone-200 flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all text-stone-400 hover:border-stone-400 hover:text-stone-600 hover:bg-[#faf8f5]"
                   >
                     + Join as Player {i + 1}
                   </button>
@@ -416,48 +482,46 @@ export default function App() {
             </div>
 
             {/* Start button */}
-            <div className="px-6 py-6 mt-2">
+            <div className="px-6 pt-4 pb-6">
               <button
                 disabled={!canStart}
                 onClick={handleStartGame}
-                className="w-full py-4 rounded-2xl font-extrabold text-sm transition-all active:scale-[0.98]"
+                className="w-full py-4 rounded-full font-extrabold text-sm tracking-wide transition-all active:scale-[0.98]"
                 style={
                   canStart
-                    ? { backgroundColor: '#EF702E', color: '#fff' }
-                    : { backgroundColor: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }
+                    ? { backgroundColor: '#1a1a1a', color: '#fff' }
+                    : { backgroundColor: '#eae7e3', color: '#b5b0a8', cursor: 'not-allowed' }
                 }
               >
                 {canStart ? 'Start Game →' : `Need ${3 - playersInLobby.length} more player${3 - playersInLobby.length !== 1 ? 's' : ''} to start`}
               </button>
             </div>
-          </div>
-
-          {/* Right: How to play */}
-          <div className="hidden md:flex flex-col gap-5 p-2 w-72">
-            <div>
-              <h3 className="text-3xl font-extrabold text-stone-900 leading-tight mb-1">
-                Collaborate to<br />Save the Campus
-              </h3>
             </div>
-            <ul className="space-y-4">
-              {[
-                ['Click an empty slot to join. Click your name to rename.', '#EF702E'],
-                ['Unlock scenarios with shared resources. Manage power, water, and materials!', '#BDDF4D'],
-                ['Upgrade to Green AI — save costs and earn benefits.', '#E4EFA6'],
-              ].map(([text, bg], i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <div
-                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-extrabold text-xs text-stone-900"
-                    style={{ backgroundColor: bg }}
-                  >
-                    {i + 1}
-                  </div>
-                  <p className="text-sm text-stone-800 leading-relaxed">{text}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
 
+            {/* How to play */}
+            <div className="bg-white rounded-[28px] shadow-[0_4px_40px_rgba(0,0,0,0.06)] p-6 lg:p-7">
+              <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-5">How to play</p>
+              <div className="space-y-3.5">
+                {[
+                  ['Join', 'Click a slot to enter. Click your name to edit.'],
+                  ['Deploy', 'Use shared resources to unlock campus buildings.'],
+                  ['Go Green', 'Upgrade all 8 buildings to sustainable AI to win.'],
+                ].map(([title, desc], i) => (
+                  <div key={i} className="rounded-2xl bg-[#f8f6f3] px-4 py-4 text-left">
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-[#1a1a1a] text-white text-xs font-extrabold flex items-center justify-center shrink-0">
+                        {i + 1}
+                      </div>
+                      <div>
+                        <p className="text-[20px] font-black text-stone-900 leading-none mb-2">{title}</p>
+                        <p className="text-[12px] text-stone-500 leading-snug">{desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -467,11 +531,23 @@ export default function App() {
     <div className="relative min-h-screen bg-white text-stone-900 font-sans overflow-hidden">
       <div className="absolute inset-0">
         <img
+          src="/bg-left.svg"
+          alt=""
+          className="absolute left-0 top-0 h-full w-auto object-contain pointer-events-none select-none"
+          aria-hidden
+        />
+        <img
+          src="/bg-right.svg"
+          alt=""
+          className="absolute right-0 top-0 h-full w-auto object-contain pointer-events-none select-none"
+          aria-hidden
+        />
+        {/* <img
           src="/path.svg"
           alt=""
           className="absolute inset-y-0 left-0 w-full h-full object-fill pointer-events-none"
           aria-hidden
-        />
+        /> */}
       </div>
 
       <div className="absolute inset-0 z-10">
@@ -488,7 +564,10 @@ export default function App() {
           return (
             <button
               key={id}
-              onClick={() => setViewingScenarioId(id)}
+              onClick={() => {
+                setUnlockNotice(null);
+                setViewingScenarioId(id);
+              }}
               className={cn(
                 'absolute group transition-transform hover:scale-[1.02] active:scale-[0.98]',
                 className
@@ -536,24 +615,83 @@ export default function App() {
         })}
       </div>
 
-      <div className="relative z-20 min-h-screen flex justify-end items-start p-6 pt-24 pointer-events-none">
-        <div className="w-full max-w-sm pointer-events-auto">
-          <ResourceHUD 
-            power={gameState.publicPower}
-            water={gameState.publicWater}
-            materials={gameState.publicMaterials}
-            players={gameState.players}
-            currentPlayerId={activePlayerId || ''}
-            activePlayerId={activePlayerId || ''}
-            playerOrder={gameState.playerOrder}
-            round={gameState.round}
-            onEndTurn={handleEndTurn}
-          />
-        </div>
+      {/* Always-visible player/public resources panel */}
+      <div className="fixed right-3 top-3 z-40 w-[min(92vw,380px)] max-h-[calc(100vh-1.5rem)] overflow-y-auto">
+        <ResourceHUD
+          inModal
+          power={gameState.publicPower}
+          water={gameState.publicWater}
+          materials={gameState.publicMaterials}
+          players={gameState.players}
+          currentPlayerId={activePlayerId || ''}
+          activePlayerId={activePlayerId || ''}
+          playerOrder={gameState.playerOrder}
+          round={gameState.round}
+          onEndTurn={handleEndTurn}
+        />
       </div>
 
       {/* Modals & Overlays */}
       <AnimatePresence>
+        {activeCrisis && (
+          <motion.div
+            key={activeCrisis.card_id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[96] flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.94, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 12 }}
+              className="w-full max-w-xl rounded-3xl bg-[#f8f6f3] border border-white/60 shadow-2xl overflow-hidden"
+            >
+              <div className="px-6 py-5 bg-[#fff1e6] border-b border-[#f0d8c6]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">Crisis Card</p>
+                <h3 className="mt-1 text-2xl font-black text-stone-900">{activeCrisis.title}</h3>
+                <p className="mt-2 text-xs font-bold uppercase tracking-wider text-[#b45309]">{activeCrisis.crisis_type}</p>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <p className="text-sm text-stone-700 leading-relaxed">{activeCrisis.description}</p>
+
+                {activeCrisis.consequence_type === 'choice' && activeCrisis.options && (
+                  <div className="space-y-2.5">
+                    {activeCrisis.options.map((option) => (
+                      <button
+                        key={option.option_id}
+                        onClick={() => handleResolveChoiceCrisis(option.cost)}
+                        className="w-full rounded-2xl bg-white border border-stone-200 p-3 text-left hover:border-stone-400 transition-colors"
+                      >
+                        <div className="text-sm font-extrabold text-stone-900">
+                          Option {option.option_id}: {option.text}
+                        </div>
+                        <div className="mt-1 text-xs font-semibold text-stone-500">
+                          Cost: B {option.cost.battery} / W {option.cost.water}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {activeCrisis.consequence_type === 'fixed' && activeCrisis.cost && (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-4">
+                    <p className="text-sm font-bold text-stone-800">
+                      Fixed cost applied: B {activeCrisis.cost.battery} / W {activeCrisis.cost.water}
+                    </p>
+                    <button
+                      onClick={handleAcknowledgeFixedCrisis}
+                      className="mt-3 w-full rounded-full bg-[#1a1a1a] py-3 text-sm font-extrabold text-white hover:bg-stone-800 transition-colors"
+                    >
+                      Acknowledge
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {viewingScenarioId !== null && currentPlayer && (
           <ScenarioDetailPopup
             scenario={SCENARIOS.find(s => s.id === viewingScenarioId)!}
@@ -562,8 +700,13 @@ export default function App() {
             publicPower={gameState.publicPower}
             publicWater={gameState.publicWater}
             publicMaterials={gameState.publicMaterials}
-            onClose={() => setViewingScenarioId(null)}
-            onUnlock={(id) => { handlePickTile(id); setViewingScenarioId(null); }}
+            unlockNotice={unlockNotice}
+            onClose={() => { setViewingScenarioId(null); setUnlockNotice(null); }}
+            onUnlock={(id, plan) => {
+              setUnlockNotice(null);
+              const unlocked = handlePickTile(id, plan);
+              if (unlocked) setViewingScenarioId(null);
+            }}
             onConfirmContribution={(contribution) => {
               handleContribute(viewingScenarioId!, contribution);
               setViewingScenarioId(null);

@@ -26,6 +26,38 @@ export interface GameStats {
   };
 }
 
+export type PlanChoice = 'A' | 'B';
+
+export interface DualPathPlan {
+  title: string;
+  description: string;
+  game_stats: GameStats;
+  risk: string;
+}
+
+export interface CrisisChoiceOption {
+  option_id: 'A' | 'B';
+  text: string;
+  cost: {
+    battery: number;
+    water: number;
+  };
+}
+
+export interface CrisisCard {
+  card_id: string;
+  scene: 'teacher_office' | 'creative_studio' | 'mental_health';
+  crisis_type: string;
+  title: string;
+  description: string;
+  consequence_type: 'choice' | 'fixed';
+  options?: CrisisChoiceOption[];
+  cost?: {
+    battery: number;
+    water: number;
+  };
+}
+
 export interface GreenTransformation {
   title: string;
   effect_desc: string;
@@ -40,6 +72,10 @@ export interface Scenario {
   visual_theme?: string;
   red_ai_status: RedAIStatus;
   game_stats: GameStats;
+  dual_path?: {
+    planA: DualPathPlan;
+    planB: DualPathPlan;
+  };
   green_transformation: GreenTransformation;
 }
 
@@ -48,6 +84,7 @@ export type TileStatus = 'locked' | 'red' | 'green';
 export interface TileState {
   id: number;
   status: TileStatus;
+  selectedPlan?: PlanChoice;
   contributions: Record<string, { battery: number; water: number }>; // playerId -> contribution
 }
 
