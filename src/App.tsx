@@ -62,8 +62,8 @@ export default function App() {
 
   const sceneKeyByScenarioName: Record<string, CrisisCard['scene']> = {
     'Teacher Office': 'teacher_office',
-    'Creative Studio': 'creative_studio',
-    'Mental Health': 'mental_health',
+    'Makerspace': 'creative_studio',
+    'Counseling Room': 'mental_health',
   };
 
   const applyCrisisCost = useCallback((state: GameState, cost: { battery: number; water: number }): GameState => {

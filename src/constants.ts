@@ -67,7 +67,7 @@ export const DUAL_PATH_SCENES = [
     },
   },
   {
-    name: 'Creative Studio',
+    name: 'Makerspace',
     planA: {
       title: 'Unrestricted AI Generation',
       description: 'Students can freely generate artwork with minimal oversight. Without proper citation mechanisms, students may submit AI-generated work as original creations.',
@@ -86,7 +86,7 @@ export const DUAL_PATH_SCENES = [
     },
   },
   {
-    name: 'Mental Health',
+    name: 'Counseling Room',
     planA: {
       title: 'Automated Crisis Detection',
       description: 'AI independently screens student messages for mental health risks and responds automatically. Misdiagnosis or delayed human intervention could escalate urgent cases.',
@@ -138,7 +138,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 2,
-    name: 'Creative Studio',
+    name: 'Makerspace',
     category: 'Green-in',
     visual_theme: 'energy_warning',
     red_ai_status: {
@@ -182,7 +182,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 3,
-    name: 'Mental Health',
+    name: 'Counseling Room',
     category: 'Green-in',
     visual_theme: 'energy_warning',
     red_ai_status: {

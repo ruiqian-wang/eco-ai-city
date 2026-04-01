@@ -44,6 +44,7 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
   const activeStats = scenario.dual_path
     ? (tileState?.selectedPlan === 'B' ? scenario.dual_path.planB.game_stats : scenario.dual_path.planA.game_stats)
     : scenario.game_stats;
+  const displayStats = isLocked ? lockedPlanStats : activeStats;
   const activeRisk = scenario.dual_path
     ? (tileState?.selectedPlan === 'B' ? scenario.dual_path.planB.risk : scenario.dual_path.planA.risk)
     : 'None';
@@ -145,16 +146,14 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
             <p className="text-stone-400 text-[11px] italic leading-relaxed">
               {scenario.red_ai_status.eco_impact_fact}
             </p>
-            {(isRed || isGreen) && (
-              <div className="mt-auto pt-2.5 border-t border-[#f0d8c6]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Per round Upkeep Cost</p>
-                <div className="rounded-lg bg-[#ef702e]/10 px-2 py-1.5">
-                  <p className="text-xs font-extrabold text-stone-800">
-                    battery {activeStats.ai_operating_consumption_per_round.standard_ai.battery} / water {activeStats.ai_operating_consumption_per_round.standard_ai.water}
-                  </p>
-                </div>
+            <div className="mt-auto pt-2.5 border-t border-[#f0d8c6]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Per round Upkeep Cost</p>
+              <div className="rounded-lg bg-[#ef702e]/10 px-2 py-1.5">
+                <p className="text-xs font-extrabold text-stone-800">
+                  battery {displayStats.ai_operating_consumption_per_round.standard_ai.battery} / water {displayStats.ai_operating_consumption_per_round.standard_ai.water}
+                </p>
               </div>
-            )}
+            </div>
           </div>
 
           {/* RIGHT – Green Transformation */}
@@ -174,16 +173,14 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
             <p className="text-stone-400 text-[11px] italic leading-relaxed">
               {scenario.green_transformation.strategy_tip}
             </p>
-            {(isRed || isGreen) && (
-              <div className="mt-auto pt-2.5 border-t border-[#c8e8b0]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Per round Upkeep Cost</p>
-                <div className="rounded-lg bg-[#4abe6a]/10 px-2 py-1.5">
-                  <p className="text-xs font-extrabold text-stone-800">
-                    battery {activeStats.ai_operating_consumption_per_round.green_ai.battery} / water {activeStats.ai_operating_consumption_per_round.green_ai.water}
-                  </p>
-                </div>
+            <div className="mt-auto pt-2.5 border-t border-[#c8e8b0]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Per round Upkeep Cost</p>
+              <div className="rounded-lg bg-[#4abe6a]/10 px-2 py-1.5">
+                <p className="text-xs font-extrabold text-stone-800">
+                  battery {displayStats.ai_operating_consumption_per_round.green_ai.battery} / water {displayStats.ai_operating_consumption_per_round.green_ai.water}
+                </p>
               </div>
-            )}
+            </div>
           </div>
           </div>
         </div>
@@ -211,9 +208,6 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
                       <div className="mt-1 text-[11px] text-stone-600 leading-relaxed">
                         {scenario.dual_path?.planA.description}
                       </div>
-                      <div className="mt-1 text-[11px] text-stone-500">
-                        Upkeep battery {scenario.dual_path?.planA.game_stats.ai_operating_consumption_per_round.standard_ai.battery} / water {scenario.dual_path?.planA.game_stats.ai_operating_consumption_per_round.standard_ai.water}
-                      </div>
                       <div className="mt-1 text-[11px] text-[#b45309]">{getRiskText(scenario.dual_path?.planA.risk || 'None')}</div>
                     </button>
                     <button
@@ -227,9 +221,6 @@ export const ScenarioDetailPopup: React.FC<ScenarioDetailPopupProps> = ({
                       <div className="text-xs font-extrabold text-stone-900">{scenario.dual_path?.planB.title}</div>
                       <div className="mt-1 text-[11px] text-stone-600 leading-relaxed">
                         {scenario.dual_path?.planB.description}
-                      </div>
-                      <div className="mt-1 text-[11px] text-stone-500">
-                        Upkeep battery {scenario.dual_path?.planB.game_stats.ai_operating_consumption_per_round.standard_ai.battery} / water {scenario.dual_path?.planB.game_stats.ai_operating_consumption_per_round.standard_ai.water}
                       </div>
                       <div className="mt-1 text-[11px] text-emerald-700">{getRiskText(scenario.dual_path?.planB.risk || 'None')}</div>
                     </button>
