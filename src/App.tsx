@@ -10,14 +10,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 const AVATAR_COLOR = '#93C5FD';
 const BOARD_SCENE_CONFIG = [
-  { id: 1, image: '/canteen.png', className: 'top-[4%] left-[22%] w-[13%]' },
-  { id: 8, image: '/teacher.png', className: 'top-[4%] left-[50%] w-[15%]' },
-  { id: 7, image: '/library.png', className: 'top-[24%] left-[36%] w-[13%]' },
-  { id: 4, image: '/classroom.png', className: 'top-[28%] left-[12%] w-[13%]' },
-  { id: 3, image: '/health.png', className: 'top-[42%] left-[54%] w-[15%]' },
-  { id: 5, image: '/garden.png', className: 'top-[52%] left-[28%] w-[16%]' },
-  { id: 6, image: '/security.png', className: 'bottom-[4%] left-[10%] w-[13%]' },
-  { id: 2, image: '/studio.png', className: 'bottom-[4%] left-[46%] w-[15%]' },
+  { id: 1, image: '/canteen.png', className: 'top-[4%] left-[18%] w-[13%]' },
+  { id: 8, image: '/teacher.png', className: 'top-[2%] left-[50%] w-[15%]' },
+  { id: 7, image: '/library.png', className: 'top-[22%] left-[32%] w-[13%]' },
+  { id: 4, image: '/classroom.png', className: 'top-[28%] left-[8%] w-[13%]' },
+  { id: 3, image: '/health.png', className: 'top-[34%] left-[58%] w-[15%]' },
+  { id: 5, image: '/garden.png', className: 'top-[56%] left-[24%] w-[16%]' },
+  { id: 6, image: '/security.png', className: 'bottom-[4%] left-[6%] w-[13%]' },
+  { id: 2, image: '/studio.png', className: 'bottom-[4%] left-[42%] w-[15%]' },
 ] as const;
 
 export default function App() {
@@ -355,7 +355,10 @@ export default function App() {
     const canStart = playersInLobby.length >= 3;
 
     return (
-      <div className="min-h-screen font-sans relative overflow-hidden" style={{ backgroundColor: '#f5f1ec' }}>
+      <div
+        className="relative h-full min-h-0 overflow-y-auto font-sans"
+        style={{ backgroundColor: '#f5f1ec' }}
+      >
 
         {/* Hero section */}
         <div className="relative pt-12 pb-8 px-6 text-center">
@@ -528,28 +531,10 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen bg-white text-stone-900 font-sans overflow-hidden">
-      <div className="absolute inset-0">
-        <img
-          src="/bg-left.svg"
-          alt=""
-          className="absolute left-0 top-0 h-full w-auto object-contain pointer-events-none select-none"
-          aria-hidden
-        />
-        <img
-          src="/bg-right.svg"
-          alt=""
-          className="absolute right-0 top-0 h-full w-auto object-contain pointer-events-none select-none"
-          aria-hidden
-        />
-        {/* <img
-          src="/path.svg"
-          alt=""
-          className="absolute inset-y-0 left-0 w-full h-full object-fill pointer-events-none"
-          aria-hidden
-        /> */}
-      </div>
-
+    <div
+      className="relative h-full min-h-0 overflow-hidden text-stone-900 font-sans"
+      style={{ backgroundColor: '#f8f6f3' }}
+    >
       <div className="absolute inset-0 z-10">
         {BOARD_SCENE_CONFIG.map(({ id, image, className }) => {
           const scenario = SCENARIOS.find(s => s.id === id);
@@ -616,7 +601,7 @@ export default function App() {
       </div>
 
       {/* Always-visible player/public resources panel */}
-      <div className="fixed right-3 top-3 z-40 w-[min(92vw,380px)] max-h-[calc(100vh-1.5rem)] overflow-y-auto">
+      <div className="fixed right-8 top-1/2 z-40 w-[min(92vw,380px)] max-h-[calc(100dvh-2rem)] -translate-y-1/2 overflow-y-auto">
         <ResourceHUD
           inModal
           power={gameState.publicPower}

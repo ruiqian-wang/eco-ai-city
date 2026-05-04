@@ -7,8 +7,14 @@
 }
 
 @layer base {
+  html {
+    @apply h-full overflow-hidden;
+  }
   body {
-    @apply antialiased text-stone-900 bg-[#F5F5F4];
+    @apply m-0 h-full overflow-hidden antialiased text-stone-900 bg-[#F5F5F4];
+  }
+  #root {
+    @apply h-full min-h-0;
   }
 }
 
